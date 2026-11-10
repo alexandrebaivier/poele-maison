@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1c1714">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Poêle">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg">
+<title>Poêle</title>
+<style>
+:root{
+  --bg:#1c1714; --card:#26201c; --card2:#2f2823; --line:#3b332d;
+  --tx:#f4ece4; --mut:#a89a8d; --fire:#ff7a2f; --ember:#ffb347; --ok:#7cc48a; --bad:#ff5c5c;
+  --t1:#5b8db8; --t2:#e0a34a; --t3:#e8603c; --off:#3b332d;
+  --r:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 32px);max-width:560px;margin:0 auto}
+h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:26px 4px 10px;font-weight:600}
+.card{background:var(--card);border-radius:var(--r);padding:16px}
+button{font:inherit;color:inherit;border:0;background:var(--card2);border-radius:12px;padding:10px 14px;cursor:pointer}
+button:active{transform:scale(.97)}
+button.primary{background:var(--fire);color:#1c1714;font-weight:700}
+button:disabled{opacity:.45}
+select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px}
+.row{display:flex;align-items:center;gap:10px}
+.sp{flex:1}
+.mut{color:var(--mut)}
+.small{font-size:13px}
+.hidden{display:none!important}
+
+/* login */
+#login{min-height:80vh;display:flex;flex-direction:column;justify-content:center;gap:16px;text-align:center}
+#login input{text-align:center;font-size:28px;letter-spacing:.3em;padding:14px}
+
+/* hero */
+.hero{position:relative;overflow:hidden;padding:22px 18px}
+.hero:before{content:"";position:absolute;inset:auto -30% -70% -30%;height:160%;background:radial-gradient(closest-side,rgba(255,122,47,.28),transparent);opacity:0;transition:opacity .6s}
+.hero.on:before{opacity:1}
+.top{display:flex;justify-content:space-between;align-items:center;position:relative}
+.pill{font-size:13px;padding:5px 11px;border-radius:99px;background:var(--card2);color:var(--mut)}
+.pill.on{background:rgba(255,122,47,.18);color:var(--ember)}
+.pill.bad{background:rgba(255,92,92,.18);color:var(--bad)}
+.temp{font-size:76px;font-weight:200;line-height:1;margin:18px 0 4px;position:relative;font-variant-numeric:tabular-nums}
+.temp small{font-size:28px;color:var(--mut)}
+.set{display:flex;align-items:center;gap:14px;margin-top:14px;position:relative}
+.set button{width:48px;height:48px;font-size:24px;border-radius:50%}
+.set .v{font-size:22px;font-variant-numeric:tabular-nums;min-width:76px;text-align:center}
+.power{margin-top:18px;width:100%;padding:14px;font-size:17px;position:relative}
+
+.toggle{display:flex;justify-content:space-between;align-items:center;padding:12px 2px}
+.toggle+.toggle{border-top:1px solid var(--line)}
+.sw{width:52px;height:30px;border-radius:99px;background:var(--off);position:relative;flex:none;transition:background .2s;padding:0}
+.sw:after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s}
+.sw.on{background:var(--fire)} .sw.on:after{left:25px}
+
+/* week */
+.week .d{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:8px;padding:5px 0;cursor:pointer;border-radius:8px}
+.week .d.sel .lb{color:var(--fire);font-weight:700}
+.bar{height:16px;border-radius:6px;background:var(--off);position:relative;overflow:hidden}
+.bar i{position:absolute;top:0;bottom:0}
+.now{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fff;border-radius:2px}
+.hours{display:grid;grid-template-columns:34px 1fr;gap:8px;font-size:11px;color:var(--mut)}
+.hours div:last-child{display:flex;justify-content:space-between}
+
+.days{display:flex;gap:6px;margin-bottom:14px}
+.days button{flex:1;padding:9px 0;font-weight:600}
+.days button.sel{background:var(--fire);color:#1c1714}
+.per{display:grid;grid-template-columns:1fr auto 1fr 1.2fr auto;gap:6px;align-items:center;margin-bottom:8px}
+.per select{width:100%;padding:8px 4px}
+.per .x{background:none;color:var(--mut);padding:6px 8px;font-size:20px}
+.lvl{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.temps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.temps .t{background:var(--card2);border-radius:12px;padding:10px;text-align:center}
+.temps .t .n{font-size:22px;font-variant-numeric:tabular-nums}
+.temps .t .bt{display:flex;justify-content:space-between;margin-top:6px}
+.temps .t button{padding:4px 12px;background:var(--line)}
+
+.warn{background:rgba(255,179,71,.12);border:1px solid rgba(255,179,71,.35);color:var(--ember);border-radius:14px;padding:12px 14px;margin-top:14px;display:flex;gap:10px;align-items:center}
+.err{background:rgba(255,92,92,.12);border:1px solid rgba(255,92,92,.35);color:#ffb3b3;border-radius:14px;padding:12px 14px;margin-top:14px}
+
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 20px);transform:translateX(-50%) translateY(120px);background:#f4ece4;color:#1c1714;padding:12px 18px;border-radius:14px;font-weight:600;transition:transform .3s,opacity .3s;z-index:9;max-width:90vw;text-align:center;opacity:0;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--mut);border-top-color:transparent;border-radius:50%;animation:s 1s linear infinite;vertical-align:-3px}
+@keyframes s{to{transform:rotate(360deg)}}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--mut);margin-top:10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<section id="login" class="hidden">
+  <div style="font-size:54px">🔥</div>
+  <div style="font-size:22px;font-weight:600">Poêle de la maison</div>
+  <div class="mut">Entre le code de la maison</div>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12">
+  <button class="primary" id="go">Entrer</button>
+  <div id="lerr" class="mut small"></div>
+</section>
+
+<section id="setup" class="hidden card" style="margin-top:20vh">
+  <div style="font-size:20px;font-weight:600;margin-bottom:8px">Presque prêt</div>
+  <div class="mut">L'app est en ligne mais il manque ses réglages (numéro de série, adresse MAC et code). Ajoute-les dans les secrets Supabase de la fonction « poele », puis rouvre cette page.</div>
+</section>
+
+<main id="app" class="hidden">
+  <div class="card hero" id="hero">
+    <div class="top">
+      <span class="pill" id="state">…</span>
+      <button id="refresh" class="small" style="background:none;color:var(--mut);padding:4px">↻ <span id="upd"></span></button>
+    </div>
+    <div class="temp"><span id="room">--</span><small>°C</small></div>
+    <div class="mut">dans la pièce</div>
+    <div class="set">
+      <button id="minus" aria-label="Moins chaud">−</button>
+      <div><div class="v" id="setp">--</div><div class="mut small" style="text-align:center">consigne</div></div>
+      <button id="plus" aria-label="Plus chaud">+</button>
+    </div>
+    <button class="power" id="power">…</button>
+    <div id="clockwarn" class="warn hidden">
+      <div class="sp small" id="clocktxt"></div>
+      <button id="clockfix" class="small">Mettre à l'heure</button>
+    </div>
+    <div id="err" class="err hidden"></div>
+  </div>
+
+  <h2>Mode</h2>
+  <div class="card" style="padding:4px 16px">
+    <div class="toggle"><div><div>Programme horaire</div><div class="mut small">Le poêle suit le planning ci-dessous</div></div><button class="sw" id="sw-chrono" aria-label="Programme"></button></div>
+    <div class="toggle"><div><div>Mode éco</div><div class="mut small">S'arrête quand la pièce est chaude</div></div><button class="sw" id="sw-eco" aria-label="Eco"></button></div>
+  </div>
+
+  <h2>La semaine</h2>
+  <div class="card week">
+    <div id="week"></div>
+    <div class="hours"><div></div><div><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <h2>Modifier un jour</h2>
+  <div class="card">
+    <div class="days" id="daybtns"></div>
+    <div id="pers"></div>
+    <div class="row" style="margin-top:6px;flex-wrap:wrap">
+      <button id="add" class="small">+ Ajouter une plage</button>
+      <div class="sp"></div>
+      <select id="copy" class="small">
+        <option value="">Copier vers…</option>
+        <option value="week">Lundi → vendredi</option>
+        <option value="weekend">Samedi et dimanche</option>
+        <option value="all">Tous les jours</option>
+      </select>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <span class="mut small sp" id="dirty"></span>
+      <button class="primary" id="save" disabled>Enregistrer</button>
+    </div>
+  </div>
+
+  <h2>Températures du programme</h2>
+  <div class="card">
+    <div class="temps" id="temps"></div>
+    <div class="row" style="margin-top:12px"><span class="mut small sp">T1 &lt; T2 &lt; T3</span><button class="primary" id="savetemps" disabled>Enregistrer</button></div>
+  </div>
+
+  <div class="row" style="margin-top:28px"><span class="sp"></span><button id="logout" class="small" style="background:none;color:var(--mut)">Se déconnecter</button></div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const API = 'https://ppurxgxjtcmfrlrhdvld.supabase.co/functions/v1/poele';
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+  set(k,v){ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,v) }catch(e){} },
+};
+// Ordre d'affichage lundi→dimanche ; index poêle : 0 = dimanche
+const ORDER = [1,2,3,4,5,6,0];
+const SHORT = {1:'L',2:'M',3:'M',4:'J',5:'V',6:'S',0:'D'};
+const NAMES = {1:'Lun',2:'Mar',3:'Mer',4:'Jeu',5:'Ven',6:'Sam',0:'Dim'};
+const LCOL = ['var(--off)','var(--t1)','var(--t2)','var(--t3)'];
+
+let pin = store.get('poele-pin');
+let S = null;               // dernier état reçu
+let draft = null;           // planning en cours d'édition (7 jours)
+let changed = new Set();
+let tdraft = null, sel = new Date().getDay(), busy = false;
+
+function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('show'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('show'),2600) }
+function show(id){ ['login','setup','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id)) }
+
+async function call(body){
+  const r = await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,pin})});
+  let j={}; try{ j=await r.json() }catch(e){}
+  if(r.status===503 && j.error==='setup'){ show('setup'); throw new Error('setup') }
+  if(r.status===401){ store.set('poele-pin',null); pin=null; show('login'); $('lerr').textContent='Code incorrect'; throw new Error('pin') }
+  if(!r.ok) throw new Error(j.message||'Erreur');
+  return j;
+}
+
+async function act(body, msg){
+  if(busy) return; busy=true; setBusy(true); $('err').classList.add('hidden');
+  try{
+    const j = await call(body);
+    apply(j, body.action);
+    if(msg) toast(msg);
+  }catch(e){
+    if(e.message!=='setup' && e.message!=='pin'){ $('err').textContent=e.message+' — réessaie dans un instant.'; $('err').classList.remove('hidden') }
+  }finally{ busy=false; setBusy(false) }
+}
+function setBusy(b){ $('upd').innerHTML = b ? '<span class="spin"></span>' : (S? new Date().toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'}) : '') }
+
+function apply(j, action){
+  S = j; show('app');
+  const i = j.info;
+  $('room').textContent = i.room==null ? '--' : i.room.toFixed(1).replace('.',',');
+  $('setp').textContent = i.setpoint==null ? '--' : i.setpoint.toFixed(1).replace('.',',')+'°';
+  const st=$('state'); st.textContent=i.state; st.className='pill'+(i.alarm?' bad':i.on?' on':'');
+  $('hero').classList.toggle('on', !!i.on);
+  $('power').textContent = i.on ? 'Éteindre' : 'Allumer';
+  $('power').className = 'power' + (i.on ? '' : ' primary');
+  $('sw-chrono').classList.toggle('on', i.chrono);
+  $('sw-eco').classList.toggle('on', i.eco);
+  const d=i.clockDriftMin;
+  if(d!=null && Math.abs(d)>=2){
+    $('clocktxt').textContent = 'L\'horloge du poêle '+(d>0?'avance':'retarde')+' de '+Math.abs(d)+' min : le programme se décale d\'autant.';
+    $('clockwarn').classList.remove('hidden');
+  } else $('clockwarn').classList.add('hidden');
+
+  if(j.chrono && j.chrono.days){
+    if(!changed.size || action==='days') { draft = j.chrono.days.map(x=>x.map(p=>({...p}))); changed.clear() }
+    if(!tdraft || action==='temps') tdraft = j.chrono.temps.slice();
+  } else if(j.chrono && j.chrono.error && !draft){
+    $('week').innerHTML = '<div class="mut small">Planning indisponible : '+j.chrono.error+'</div>';
+  }
+  renderWeek(); renderDay(); renderTemps();
+}
+
+function bar(periods){
+  return (periods||[]).map(p=>{
+    const s=toMin(p.start), e=toMin(p.end);
+    return `<i style="left:${s/14.4}%;width:${(e-s)/14.4}%;background:${LCOL[p.level]}"></i>`;
+  }).join('');
+}
+function toMin(t){ const [h,m]=t.split(':').map(Number); return h*60+m }
+function renderWeek(){
+  if(!draft) return;
+  const now=new Date(), today=now.getDay(), nm=now.getHours()*60+now.getMinutes();
+  $('week').innerHTML = ORDER.map(d=>`<div class="d ${d===sel?'sel':''}" data-d="${d}"><span class="lb">${NAMES[d]}</span><div class="bar">${bar(draft[d])}${d===today?`<span class="now" style="left:${nm/14.4}%"></span>`:''}</div></div>`).join('');
+  document.querySelectorAll('.week .d').forEach(el=>el.onclick=()=>{ sel=+el.dataset.d; renderWeek(); renderDay() });
+  const t=tdraft||[];
+  $('legend').innerHTML = [1,2,3].map(l=>`<span><span class="lvl" style="background:${LCOL[l]}"></span>T${l} ${t[l-1]!=null?t[l-1]+'°':''}</span>`).join('');
+}
+
+const TIMES=[...Array(49)].map((_,k)=>String(Math.floor(k/2)).padStart(2,'0')+':'+(k%2?'30':'00'));
+function opts(v,from,to){ return TIMES.slice(from,to).map(t=>`<option ${t===v?'selected':''}>${t}</option>`).join('') }
+function renderDay(){
+  $('daybtns').innerHTML = ORDER.map(d=>`<button data-d="${d}" class="${d===sel?'sel':''}">${SHORT[d]}</button>`).join('');
+  document.querySelectorAll('#daybtns button').forEach(b=>b.onclick=()=>{ sel=+b.dataset.d; renderWeek(); renderDay() });
+  if(!draft){ $('pers').innerHTML=''; return }
+  const ps=draft[sel], t=tdraft||[];
+  $('pers').innerHTML = ps.length ? ps.map((p,k)=>`
+    <div class="per" data-k="${k}">
+      <select data-f="start">${opts(p.start,0,48)}</select><span class="mut">→</span>
+      <select data-f="end">${opts(p.end,1,49)}</select>
+      <select data-f="level">${[1,2,3].map(l=>`<option value="${l}" ${l===p.level?'selected':''}>T${l}${t[l-1]!=null?' · '+t[l-1]+'°':''}</option>`).join('')}</select>
+      <button class="x" aria-label="Supprimer">×</button>
+    </div>`).join('') : '<div class="mut small" style="padding:6px 0 10px">Pas de chauffe programmée ce jour-là.</div>';
+  document.querySelectorAll('.per').forEach(row=>{
+    const k=+row.dataset.k;
+    row.querySelectorAll('select').forEach(s=>s.onchange=()=>{
+      const f=s.dataset.f; ps[k][f] = f==='level' ? +s.value : s.value;
+      if(toMin(ps[k].end)<=toMin(ps[k].start)) { ps[k].end = TIMES[Math.min(48,toMin(ps[k].start)/30+1)] }
+      mark([sel]);
+    });
+    row.querySelector('.x').onclick=()=>{ ps.splice(k,1); mark([sel]) };
+  });
+  const n=changed.size;
+  $('dirty').textContent = n ? n+' jour'+(n>1?'s':'')+' modifié'+(n>1?'s':'') : '';
+  $('save').disabled = !n;
+}
+function mark(days){ days.forEach(d=>changed.add(d)); draft.forEach((ps,d)=>ps.sort((a,b)=>toMin(a.start)-toMin(b.start))); renderWeek(); renderDay() }
+
+$('add').onclick=()=>{
+  if(!draft) return;
+  const ps=draft[sel], last=ps[ps.length-1];
+  const s = last ? Math.min(46, toMin(last.end)/30+1) : 12;
+  ps.push({start:TIMES[s], end:TIMES[Math.min(48,s+2)], level:2});
+  mark([sel]);
+};
+$('copy').onchange=(e)=>{
+  const v=e.target.value; e.target.value=''; if(!draft||!v) return;
+  const tgt = v==='week'?[1,2,3,4,5]:v==='weekend'?[6,0]:[0,1,2,3,4,5,6];
+  const src = draft[sel];
+  tgt.filter(d=>d!==sel).forEach(d=>draft[d]=src.map(p=>({...p})));
+  mark(tgt.filter(d=>d!==sel)); toast('Copié — pense à enregistrer');
+};
+$('save').onclick=()=>{
+  const days={}; changed.forEach(d=>days[d]=draft[d]);
+  act({action:'days',days},'Planning enregistré dans le poêle');
+};
+
+function renderTemps(){
+  if(!tdraft) return;
+  const orig = S && S.chrono && S.chrono.temps;
+  $('temps').innerHTML = tdraft.map((v,k)=>`<div class="t"><div class="small" style="color:${LCOL[k+1]}">T${k+1}</div><div class="n">${v}°</div><div class="bt"><button data-k="${k}" data-d="-1">−</button><button data-k="${k}" data-d="1">+</button></div></div>`).join('');
+  document.querySelectorAll('.temps button').forEach(b=>b.onclick=()=>{
+    const k=+b.dataset.k; tdraft[k]=Math.max(5,Math.min(35,tdraft[k]+ +b.dataset.d)); renderTemps(); renderWeek(); renderDay();
+  });
+  const ok = tdraft[0]<tdraft[1] && tdraft[1]<tdraft[2];
+  $('savetemps').disabled = !ok || (orig && orig.join()===tdraft.join());
+}
+$('savetemps').onclick=()=>act({action:'temps',temps:tdraft},'Températures enregistrées');
+
+$('power').onclick=()=>{
+  const on = !(S&&S.info.on);
+  if(!confirm(on?'Allumer le poêle maintenant ?':'Éteindre le poêle ?')) return;
+  act({action:'power',on}, on?'Allumage demandé':'Extinction demandée');
+};
+let spTimer=null, spVal=null;
+function bump(dv){
+  if(!S||S.info.setpoint==null) return;
+  spVal = Math.max(5,Math.min(35,(spVal ?? S.info.setpoint)+dv));
+  $('setp').textContent = spVal.toFixed(1).replace('.',',')+'°';
+  clearTimeout(spTimer); spTimer=setTimeout(()=>{ const v=spVal; spVal=null; act({action:'setpoint',value:v},'Consigne : '+String(v).replace('.',',')+'°') },1200);
+}
+$('minus').onclick=()=>bump(-0.5); $('plus').onclick=()=>bump(0.5);
+$('sw-chrono').onclick=()=>act({action:'chrono',on:!S.info.chrono}, !S.info.chrono?'Programme activé':'Programme désactivé');
+$('sw-eco').onclick=()=>act({action:'eco',on:!S.info.eco}, !S.info.eco?'Mode éco activé':'Mode éco désactivé');
+$('clockfix').onclick=()=>act({action:'clock'},'Horloge du poêle réglée');
+$('refresh').onclick=()=>act({action:'status'});
+$('logout').onclick=()=>{ store.set('poele-pin',null); pin=null; show('login') };
+
+function login(){ pin=$('pin').value.trim(); if(!pin) return; store.set('poele-pin',pin); $('lerr').textContent=''; act({action:'status'}) }
+$('go').onclick=login; $('pin').onkeydown=(e)=>{ if(e.key==='Enter') login() };
+
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && pin && !changed.size) act({action:'status'}) });
+if(pin) { show('app'); act({action:'status'}) } else show('login');
+renderDay();
+</script>
+</body>
+</html>
