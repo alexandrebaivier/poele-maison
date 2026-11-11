@@ -96,7 +96,7 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
 <section id="login" class="hidden">
   <div style="font-size:54px">🔥</div>
   <div style="font-size:22px;font-weight:600">Poêle de la maison</div>
-  <div class="mut">Entre le code de la maison</div>
+  <div class="mut" id="ltxt">Entre le code de la maison</div>
   <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12">
   <button class="primary" id="go">Entrer</button>
   <div id="lerr" class="mut small"></div>
@@ -104,7 +104,7 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
 
 <section id="setup" class="hidden card" style="margin-top:20vh">
   <div style="font-size:20px;font-weight:600;margin-bottom:8px">Presque prêt</div>
-  <div class="mut">L'app est en ligne mais il manque ses réglages (numéro de série, adresse MAC et code). Ajoute-les dans les secrets Supabase de la fonction « poele », puis rouvre cette page.</div>
+  <div class="mut">L'app est en ligne mais il manque ses réglages (numéro de série et adresse MAC). Demande à Claude de les compléter, puis rouvre cette page.</div>
 </section>
 
 <main id="app" class="hidden">
@@ -173,7 +173,7 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
 <div id="toast"></div>
 
 <script>
-const API = 'https://ppurxgxjtcmfrlrhdvld.supabase.co/functions/v1/poele';
+const API = 'https://xvioepqlfqxifqhigfls.supabase.co/functions/v1/poele';
 const $ = (id) => document.getElementById(id);
 const store = {
   get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
@@ -189,7 +189,7 @@ let pin = store.get('poele-pin');
 let S = null;               // dernier état reçu
 let draft = null;           // planning en cours d'édition (7 jours)
 let changed = new Set();
-let tdraft = null, sel = new Date().getDay(), busy = false;
+let newPin = false, tdraft = null, sel = new Date().getDay(), busy = false;
 
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('show'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('show'),2600) }
 function show(id){ ['login','setup','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id)) }
@@ -198,6 +198,8 @@ async function call(body){
   const r = await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,pin})});
   let j={}; try{ j=await r.json() }catch(e){}
   if(r.status===503 && j.error==='setup'){ show('setup'); throw new Error('setup') }
+  if(r.status===428){ newPin=true; show('login'); $('ltxt').textContent='Première ouverture : choisis le code de la maison (4 chiffres ou plus)'; $('go').textContent='Enregistrer ce code'; throw new Error('pin') }
+  if(r.status===429||r.status===400){ show('login'); $('lerr').textContent=j.message||''; throw new Error('pin') }
   if(r.status===401){ store.set('poele-pin',null); pin=null; show('login'); $('lerr').textContent='Code incorrect'; throw new Error('pin') }
   if(!r.ok) throw new Error(j.message||'Erreur');
   return j;
@@ -336,7 +338,7 @@ $('clockfix').onclick=()=>act({action:'clock'},'Horloge du poêle réglée');
 $('refresh').onclick=()=>act({action:'status'});
 $('logout').onclick=()=>{ store.set('poele-pin',null); pin=null; show('login') };
 
-function login(){ pin=$('pin').value.trim(); if(!pin) return; store.set('poele-pin',pin); $('lerr').textContent=''; act({action:'status'}) }
+function login(){ pin=$('pin').value.trim(); if(!pin) return; store.set('poele-pin',pin); $('lerr').textContent=''; const a=newPin?'setpin':'status'; newPin=false; $('ltxt').textContent='Entre le code de la maison'; $('go').textContent='Entrer'; act({action:a}) }
 $('go').onclick=login; $('pin').onkeydown=(e)=>{ if(e.key==='Enter') login() };
 
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden && pin && !changed.size) act({action:'status'}) });
