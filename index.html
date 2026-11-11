@@ -195,13 +195,14 @@ function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('show');
 function show(id){ ['login','setup','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id)) }
 
 async function call(body){
-  const r = await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,pin})});
+  let r; try { r = await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,pin})}); } catch(e){ throw new Error('Connexion au service impossible') }
   let j={}; try{ j=await r.json() }catch(e){}
   if(r.status===503 && j.error==='setup'){ show('setup'); throw new Error('setup') }
   if(r.status===428){ newPin=true; show('login'); $('ltxt').textContent='Première ouverture : choisis le code de la maison (4 chiffres ou plus)'; $('go').textContent='Enregistrer ce code'; throw new Error('pin') }
   if(r.status===429||r.status===400){ show('login'); $('lerr').textContent=j.message||''; throw new Error('pin') }
   if(r.status===401){ store.set('poele-pin',null); pin=null; show('login'); $('lerr').textContent='Code incorrect'; throw new Error('pin') }
   if(!r.ok) throw new Error(j.message||'Erreur');
+  store.set('poele-pin',pin);
   return j;
 }
 
@@ -212,7 +213,7 @@ async function act(body, msg){
     apply(j, body.action);
     if(msg) toast(msg);
   }catch(e){
-    if(e.message!=='setup' && e.message!=='pin'){ $('err').textContent=e.message+' — réessaie dans un instant.'; $('err').classList.remove('hidden') }
+    if(e.message!=='setup' && e.message!=='pin'){ const m=e.message+' — réessaie dans un instant.'; $('err').textContent=m; $('err').classList.remove('hidden'); $('lerr').textContent=m }
   }finally{ busy=false; setBusy(false) }
 }
 function setBusy(b){ $('upd').innerHTML = b ? '<span class="spin"></span>' : (S? new Date().toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'}) : '') }
@@ -338,7 +339,7 @@ $('clockfix').onclick=()=>act({action:'clock'},'Horloge du poêle réglée');
 $('refresh').onclick=()=>act({action:'status'});
 $('logout').onclick=()=>{ store.set('poele-pin',null); pin=null; show('login') };
 
-function login(){ pin=$('pin').value.trim(); if(!pin) return; store.set('poele-pin',pin); $('lerr').textContent=''; const a=newPin?'setpin':'status'; newPin=false; $('ltxt').textContent='Entre le code de la maison'; $('go').textContent='Entrer'; act({action:a}) }
+function login(){ pin=$('pin').value.trim(); if(!pin) return; $('lerr').textContent=''; const a=newPin?'setpin':'status'; newPin=false; $('ltxt').textContent='Entre le code de la maison'; $('go').textContent='Entrer'; act({action:a}) }
 $('go').onclick=login; $('pin').onkeydown=(e)=>{ if(e.key==='Enter') login() };
 
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden && pin && !changed.size) act({action:'status'}) });
