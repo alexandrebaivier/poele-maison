@@ -40,7 +40,7 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
 
 /* hero */
 .hero{position:relative;overflow:hidden;padding:22px 18px}
-.hero:before{content:"";position:absolute;inset:auto -30% -70% -30%;height:160%;background:radial-gradient(closest-side,rgba(255,122,47,.28),transparent);opacity:0;transition:opacity .6s}
+.hero:before{content:"";position:absolute;inset:auto -30% -70% -30%;height:160%;background:radial-gradient(closest-side,rgba(255,122,47,.28),transparent);opacity:0;transition:opacity .6s;pointer-events:none}
 .hero.on:before{opacity:1}
 .top{display:flex;justify-content:space-between;align-items:center;position:relative}
 .pill{font-size:13px;padding:5px 11px;border-radius:99px;background:var(--card2);color:var(--mut)}
@@ -81,6 +81,7 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
 .temps .t .bt{display:flex;justify-content:space-between;margin-top:6px}
 .temps .t button{padding:4px 12px;background:var(--line)}
 
+.warn,.err{position:relative}
 .warn{background:rgba(255,179,71,.12);border:1px solid rgba(255,179,71,.35);color:var(--ember);border-radius:14px;padding:12px 14px;margin-top:14px;display:flex;gap:10px;align-items:center}
 .err{background:rgba(255,92,92,.12);border:1px solid rgba(255,92,92,.35);color:#ffb3b3;border-radius:14px;padding:12px 14px;margin-top:14px}
 
@@ -222,6 +223,7 @@ function setBusy(b){ $('upd').innerHTML = b ? '<span class="spin"></span>' : (S?
 function apply(j, action){
   S = j; show('app');
   const i = j.info;
+  i.on = i.stateCode!=null && i.stateCode>0 && i.stateCode<50;
   $('room').textContent = i.room==null ? '--' : i.room.toFixed(1).replace('.',',');
   $('setp').textContent = i.setpoint==null ? '--' : i.setpoint.toFixed(1).replace('.',',')+'°';
   const st=$('state'); st.textContent=i.state; st.className='pill'+(i.alarm?' bad':i.on?' on':'');
