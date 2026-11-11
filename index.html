@@ -211,6 +211,7 @@ async function act(body, msg){
   try{
     const j = await call(body);
     apply(j, body.action);
+    if(typeof msg==='function') msg=msg(j);
     if(msg) toast(msg);
   }catch(e){
     if(e.message!=='setup' && e.message!=='pin'){ const m=e.message+' — réessaie dans un instant.'; $('err').textContent=m; $('err').classList.remove('hidden'); $('lerr').textContent=m }
@@ -335,7 +336,7 @@ function bump(dv){
 $('minus').onclick=()=>bump(-0.5); $('plus').onclick=()=>bump(0.5);
 $('sw-chrono').onclick=()=>act({action:'chrono',on:!S.info.chrono}, !S.info.chrono?'Programme activé':'Programme désactivé');
 $('sw-eco').onclick=()=>act({action:'eco',on:!S.info.eco}, !S.info.eco?'Mode éco activé':'Mode éco désactivé');
-$('clockfix').onclick=()=>act({action:'clock'},'Horloge du poêle réglée');
+$('clockfix').onclick=()=>act({action:'clock'},(j)=>Math.abs(j.info.clockDriftMin||0)<2?'Horloge du poêle réglée':'Le poêle n\'a pas pris la nouvelle heure');
 $('refresh').onclick=()=>act({action:'status'});
 $('logout').onclick=()=>{ store.set('poele-pin',null); pin=null; show('login') };
 
