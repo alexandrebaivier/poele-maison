@@ -43,9 +43,19 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
 .hero:before{content:"";position:absolute;inset:auto -30% -70% -30%;height:160%;background:radial-gradient(closest-side,rgba(255,122,47,.28),transparent);opacity:0;transition:opacity .6s;pointer-events:none}
 .hero.on:before{opacity:1}
 .top{display:flex;justify-content:space-between;align-items:center;position:relative}
-.pill{font-size:13px;padding:5px 11px;border-radius:99px;background:var(--card2);color:var(--mut)}
-.pill.on{background:rgba(255,122,47,.18);color:var(--ember)}
-.pill.bad{background:rgba(255,92,92,.18);color:var(--bad)}
+.status{display:flex;align-items:center;gap:10px;padding:8px 14px 8px 12px;border-radius:14px;background:var(--card2);color:var(--mut)}
+.status .dot{width:14px;height:14px;border-radius:50%;background:#6b5f56;flex:none}
+.status .lbl{font-size:19px;font-weight:800;letter-spacing:.02em;line-height:1.1}
+.status .sub{font-size:12px;opacity:.85}
+.status.on{background:rgba(255,122,47,.2);color:var(--ember)}
+.status.on .dot{background:var(--fire);animation:pulse 1.6s ease-out infinite}
+.status.wait{background:rgba(255,179,71,.12);color:var(--ember)}
+.status.wait .dot{background:var(--ember)}
+.status.bad{background:rgba(255,92,92,.18);color:var(--bad)}
+.status.bad .dot{background:var(--bad)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,122,47,.7)}100%{box-shadow:0 0 0 10px rgba(255,122,47,0)}}
+@media (prefers-reduced-motion:reduce){.status.on .dot{animation:none}}
+.hero.off .temp,.hero.off .mon{opacity:.6}
 .mon{position:absolute;right:6px;top:46px;width:108px;padding:0;background:none;border-radius:0;z-index:1}
 .mon svg{display:block;width:100%;height:auto;overflow:visible}
 .mon .burn{transform-origin:60px 128px;animation:mflick 1.4s ease-in-out infinite}
@@ -136,7 +146,7 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
   </div>
   <div class="card hero" id="hero">
     <div class="top">
-      <span class="pill" id="state">…</span>
+      <div class="status" id="state" role="status"><span class="dot"></span><div><div class="lbl" id="stlbl">…</div><div class="sub" id="stsub"></div></div></div>
       <button id="refresh" class="small" style="background:none;color:var(--mut);padding:4px">↻ <span id="upd"></span></button>
     </div>
     <button id="mon" class="mon" aria-label="Le petit monstre du poêle"></button>
@@ -316,10 +326,20 @@ function apply(j, action){
   i.on = i.stateCode!=null && i.stateCode>0 && i.stateCode<50;
   $('room').textContent = i.room==null ? '--' : i.room.toFixed(1).replace('.',',');
   $('setp').textContent = i.setpoint==null ? '--' : i.setpoint.toFixed(1).replace('.',',')+'°';
-  const st=$('state'); st.textContent=i.state; st.className='pill'+(i.alarm?' bad':i.on?' on':'');
-  $('hero').classList.toggle('on', i.stateCode>0&&i.stateCode<40);
+  const c=i.stateCode, raw=i.state?' · '+i.state:'';
+  const [lbl,sub,cls] = i.alarm ? ['En alarme','Le poêle demande une intervention','bad']
+    : c==null ? ['État inconnu','Pas de réponse du poêle','']
+    : c===0 ? ['Éteint','Le poêle est à l\'arrêt','']
+    : c<11 ? ['Allumé','Démarrage en cours','on']
+    : c<40 ? ['Allumé','En chauffe','on']
+    : c<50 ? (i.eco ? ['Allumé','En pause éco, repart tout seul','wait'] : ['Allumé','Se refroidit','wait'])
+    : ['Éteint','',''];
+  const st=$('state'); st.className='status'+(cls?' '+cls:'');
+  $('stlbl').textContent=lbl; $('stsub').textContent=(sub+raw).replace(/^ · /,'');
+  $('hero').classList.toggle('on', c>0&&c<40);
+  $('hero').classList.toggle('off', !i.on && !i.alarm);
   greet(); mood(i);
-  $('power').textContent = i.on ? 'Éteindre' : 'Allumer';
+  $('power').textContent = i.on ? 'Éteindre le poêle' : 'Allumer le poêle';
   $('power').className = 'power' + (i.on ? '' : ' primary');
   $('sw-chrono').classList.toggle('on', i.chrono);
   $('sw-eco').classList.toggle('on', i.eco);
