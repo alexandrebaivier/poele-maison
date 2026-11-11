@@ -46,6 +46,15 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
 .pill{font-size:13px;padding:5px 11px;border-radius:99px;background:var(--card2);color:var(--mut)}
 .pill.on{background:rgba(255,122,47,.18);color:var(--ember)}
 .pill.bad{background:rgba(255,92,92,.18);color:var(--bad)}
+.hello{padding:6px 4px 14px}
+.hello #hi{font-size:26px;font-weight:700;letter-spacing:-.01em;cursor:pointer}
+.hello #mood{margin-top:2px}
+#who{margin-bottom:14px}
+#who .row{margin-top:10px}
+#who input{flex:1;min-width:0}
+.flame{display:inline-block;font-size:44px;margin-left:10px;transform-origin:50% 90%;animation:flick 1.6s ease-in-out infinite}
+@keyframes flick{0%,100%{transform:scale(1) rotate(-2deg)}30%{transform:scale(1.08,1.14) rotate(2deg)}60%{transform:scale(.96,1.04) rotate(-1deg)}}
+@media (prefers-reduced-motion:reduce){.flame{animation:none}}
 .temp{font-size:76px;font-weight:200;line-height:1;margin:18px 0 4px;position:relative;font-variant-numeric:tabular-nums}
 .temp small{font-size:28px;color:var(--mut)}
 .set{display:flex;align-items:center;gap:14px;margin-top:14px;position:relative}
@@ -109,12 +118,17 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
 </section>
 
 <main id="app" class="hidden">
+  <div class="hello"><div id="hi" title="Changer de prénom"></div><div id="mood" class="mut"></div></div>
+  <div id="who" class="card hidden">
+    <div>Comment tu t'appelles ?</div>
+    <div class="row"><input id="nom" type="text" maxlength="20" autocomplete="given-name" placeholder="Ton prénom"><button class="primary" id="nomok">C'est moi</button></div>
+  </div>
   <div class="card hero" id="hero">
     <div class="top">
       <span class="pill" id="state">…</span>
       <button id="refresh" class="small" style="background:none;color:var(--mut);padding:4px">↻ <span id="upd"></span></button>
     </div>
-    <div class="temp"><span id="room">--</span><small>°C</small></div>
+    <div class="temp"><span id="room">--</span><small>°C</small><span id="flame" class="flame hidden" aria-hidden="true">🔥</span></div>
     <div class="mut">dans la pièce</div>
     <div class="set">
       <button id="minus" aria-label="Moins chaud">−</button>
@@ -220,6 +234,28 @@ async function act(body, msg){
 }
 function setBusy(b){ $('upd').innerHTML = b ? '<span class="spin"></span>' : (S? new Date().toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'}) : '') }
 
+let who = store.get('poele-nom');
+function greet(){
+  const h=new Date().getHours();
+  const g = h<5?['Bonne nuit','🌙']:h<12?['Bonjour','☀️']:h<18?['Bon après-midi','👋']:['Bonsoir','✨'];
+  $('hi').textContent = g[0]+(who?' '+who:'')+' '+g[1];
+  $('who').classList.toggle('hidden', !!who);
+}
+function mood(i){
+  const h=new Date().getHours(), c=i.stateCode, r=i.room, s=i.setpoint;
+  const bye = h<5?'Dors bien.':h<12?'Bonne journée !':h<18?'Bel après-midi !':'Bonne soirée !';
+  const t = r==null?'':String(r).replace('.',',')+'°';
+  let m;
+  if(i.alarm) m='Le poêle réclame un peu d\'attention.';
+  else if(c>0&&c<11) m='Ça démarre, la flamme arrive.';
+  else if(c>=11&&c<40) m = (s!=null&&r!=null&&r<s-0.5) ? 'Ça chauffe, encore un peu de patience.' : 'Ça crépite, on est bien.';
+  else if(c>=40&&c<50) m = i.eco ? 'Il fait assez chaud : le poêle fait sa sieste et repartira tout seul.' : 'Le poêle se refroidit tranquillement.';
+  else if(r!=null&&r<18) m='Brr, '+t+'. Une petite flambée ?';
+  else if(r!=null&&r>=21) m='Il fait '+t+' sans lui, le poêle se repose.';
+  else m='Tout est calme.';
+  $('mood').textContent = m+' '+bye;
+  $('flame').classList.toggle('hidden', !(c>0&&c<40));
+}
 function apply(j, action){
   S = j; show('app');
   const i = j.info;
@@ -227,7 +263,8 @@ function apply(j, action){
   $('room').textContent = i.room==null ? '--' : i.room.toFixed(1).replace('.',',');
   $('setp').textContent = i.setpoint==null ? '--' : i.setpoint.toFixed(1).replace('.',',')+'°';
   const st=$('state'); st.textContent=i.state; st.className='pill'+(i.alarm?' bad':i.on?' on':'');
-  $('hero').classList.toggle('on', !!i.on);
+  $('hero').classList.toggle('on', i.stateCode>0&&i.stateCode<40);
+  greet(); mood(i);
   $('power').textContent = i.on ? 'Éteindre' : 'Allumer';
   $('power').className = 'power' + (i.on ? '' : ' primary');
   $('sw-chrono').classList.toggle('on', i.chrono);
@@ -308,7 +345,7 @@ $('copy').onchange=(e)=>{
 };
 $('save').onclick=()=>{
   const days={}; changed.forEach(d=>days[d]=draft[d]);
-  act({action:'days',days},'Planning enregistré dans le poêle');
+  act({action:'days',days},'Planning enregistré, le poêle s\'en souviendra 📅');
 };
 
 function renderTemps(){
@@ -326,14 +363,14 @@ $('savetemps').onclick=()=>act({action:'temps',temps:tdraft},'Températures enre
 $('power').onclick=()=>{
   const on = !(S&&S.info.on);
   if(!confirm(on?'Allumer le poêle maintenant ?':'Éteindre le poêle ?')) return;
-  act({action:'power',on}, on?'Allumage demandé':'Extinction demandée');
+  act({action:'power',on}, on?'C\'est parti, ça va chauffer 🔥':'Extinction des feux 🌙');
 };
 let spTimer=null, spVal=null;
 function bump(dv){
   if(!S||S.info.setpoint==null) return;
   spVal = Math.max(5,Math.min(35,(spVal ?? S.info.setpoint)+dv));
   $('setp').textContent = spVal.toFixed(1).replace('.',',')+'°';
-  clearTimeout(spTimer); spTimer=setTimeout(()=>{ const v=spVal; spVal=null; act({action:'setpoint',value:v},'Consigne : '+String(v).replace('.',',')+'°') },1200);
+  clearTimeout(spTimer); spTimer=setTimeout(()=>{ const v=spVal; spVal=null; act({action:'setpoint',value:v},String(v).replace('.',',')+'° — '+(v>=22?'ambiance tropicale 🌴':v<=18?'mode pull en laine 🧶':'bien cosy 🛋️')) },1200);
 }
 $('minus').onclick=()=>bump(-0.5); $('plus').onclick=()=>bump(0.5);
 $('sw-chrono').onclick=()=>act({action:'chrono',on:!S.info.chrono}, !S.info.chrono?'Programme activé':'Programme désactivé');
@@ -346,6 +383,10 @@ function login(){ pin=$('pin').value.trim(); if(!pin) return; $('lerr').textCont
 $('go').onclick=login; $('pin').onkeydown=(e)=>{ if(e.key==='Enter') login() };
 
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden && pin && !changed.size) act({action:'status'}) });
+$('nomok').onclick=()=>{ const n=$('nom').value.trim(); if(!n) return; who=n; store.set('poele-nom',n); greet(); toast('Enchanté '+n+' 👋') };
+$('nom').onkeydown=(e)=>{ if(e.key==='Enter') $('nomok').onclick() };
+$('hi').onclick=()=>{ $('nom').value=who||''; who=null; $('who').classList.remove('hidden'); $('nom').focus() };
+greet();
 if(pin) { show('app'); act({action:'status'}) } else show('login');
 renderDay();
 </script>
