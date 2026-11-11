@@ -46,6 +46,17 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
 .pill{font-size:13px;padding:5px 11px;border-radius:99px;background:var(--card2);color:var(--mut)}
 .pill.on{background:rgba(255,122,47,.18);color:var(--ember)}
 .pill.bad{background:rgba(255,92,92,.18);color:var(--bad)}
+.mon{position:absolute;right:6px;top:46px;width:108px;padding:0;background:none;border-radius:0;z-index:1}
+.mon svg{display:block;width:100%;height:auto;overflow:visible}
+.mon .burn{transform-origin:60px 128px;animation:mflick 1.4s ease-in-out infinite}
+.mon .shiver{animation:mshiver .18s linear infinite}
+.mon .chat{animation:mchat .16s linear infinite}
+.mon.hop svg{animation:mhop .5s ease}
+@keyframes mflick{0%,100%{transform:scale(1)}40%{transform:scale(1.03,1.06)}70%{transform:scale(.98,1.02)}}
+@keyframes mshiver{0%,100%{transform:translateX(-1.2px)}50%{transform:translateX(1.2px)}}
+@keyframes mchat{0%,100%{transform:translateY(0)}50%{transform:translateY(1.5px)}}
+@keyframes mhop{0%,100%{transform:translateY(0)}40%{transform:translateY(-12px)}}
+@media (prefers-reduced-motion:reduce){.mon .burn,.mon .shiver,.mon .chat,.mon.hop svg{animation:none}}
 .hello{padding:6px 4px 14px}
 .hello #hi{font-size:26px;font-weight:700;letter-spacing:-.01em;cursor:pointer}
 .hello #mood{margin-top:2px}
@@ -128,7 +139,8 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
       <span class="pill" id="state">…</span>
       <button id="refresh" class="small" style="background:none;color:var(--mut);padding:4px">↻ <span id="upd"></span></button>
     </div>
-    <div class="temp"><span id="room">--</span><small>°C</small><span id="flame" class="flame hidden" aria-hidden="true">🔥</span></div>
+    <button id="mon" class="mon" aria-label="Le petit monstre du poêle"></button>
+    <div class="temp"><span id="room">--</span><small>°C</small></div>
     <div class="mut">dans la pièce</div>
     <div class="set">
       <button id="minus" aria-label="Moins chaud">−</button>
@@ -254,7 +266,49 @@ function mood(i){
   else if(r!=null&&r>=21) m='Il fait '+t+' sans lui, le poêle se repose.';
   else m='Tout est calme.';
   $('mood').textContent = m+' '+bye;
-  $('flame').classList.toggle('hidden', !(c>0&&c<40));
+  monster(r, c>0&&c<40);
+}
+// Le petit monstre-flamme : sa tenue suit la température de la pièce.
+const MON = {
+  gel:   {c:['#7fb6e6','#d3eafb','#4f8fc4'], say:'J\'ai les flammèches gelées ! 🥶'},
+  frais: {c:['#f0a04e','#ffd896','#c9742a'], say:'Un peu frisquet, non ? 🧣'},
+  ok:    {c:['#ff7a2f','#ffc65a','#d9541a'], say:'Pile comme j\'aime 😌'},
+  chaud: {c:['#ff6a2a','#ffb347','#d0481a'], say:'Ça commence à taper 😎'},
+  plage: {c:['#ff5126','#ffa23a','#c63a14'], say:'Qui veut un cocktail ? 🏖️'},
+};
+let monMode='ok';
+function monster(r, burning){
+  const m = r==null?'ok':r<17?'gel':r<19?'frais':r<21.5?'ok':r<23?'chaud':'plage';
+  monMode=m;
+  const [a,b,d]=MON[m].c, ink='#2a1710';
+  const shades = m==='chaud'||m==='plage';
+  const eyes = shades
+    ? `<rect x="33" y="67" width="24" height="17" rx="7" fill="${ink}"/><rect x="63" y="67" width="24" height="17" rx="7" fill="${ink}"/><rect x="55" y="72" width="10" height="4" fill="${ink}"/><rect x="37" y="70" width="8" height="3" rx="1.5" fill="#fff" opacity=".5"/><rect x="67" y="70" width="8" height="3" rx="1.5" fill="#fff" opacity=".5"/>`
+    : `<circle cx="46" cy="76" r="10" fill="#fff"/><circle cx="74" cy="76" r="10" fill="#fff"/><circle cx="${m==='gel'?46:48}" cy="77" r="${m==='gel'?3:4.5}" fill="${ink}"/><circle cx="${m==='gel'?74:76}" cy="77" r="${m==='gel'?3:4.5}" fill="${ink}"/>`
+      + (m==='gel'?`<path d="M36 63 L54 67 M84 63 L66 67" stroke="${ink}" stroke-width="3" stroke-linecap="round" fill="none"/>`:'');
+  const mouth = m==='gel'
+    ? `<g class="chat"><rect x="49" y="90" width="22" height="9" rx="2.5" fill="#fff" stroke="${ink}" stroke-width="2"/><path d="M56 90 V99 M64 90 V99 M49 94.5 H71" stroke="${ink}" stroke-width="1.5" fill="none"/></g>`
+    : m==='frais' ? `<path d="M50 94 Q60 98 70 94" stroke="${ink}" stroke-width="3" stroke-linecap="round" fill="none"/>`
+    : m==='plage' ? `<path d="M47 89 Q60 108 73 89 Z" fill="#7a1f10"/><path d="M54 97 Q60 104 66 97 Z" fill="#ff8f8f"/>`
+    : `<path d="M48 91 Q60 103 72 91" stroke="${ink}" stroke-width="3" stroke-linecap="round" fill="none"/>`;
+  const cheeks = m==='ok'||m==='chaud' ? `<circle cx="36" cy="90" r="5" fill="#ff5e7a" opacity=".45"/><circle cx="84" cy="90" r="5" fill="#ff5e7a" opacity=".45"/>` : '';
+  const arms = m==='gel'
+    ? `<path d="M24 92 Q40 104 56 100 M96 92 Q80 104 64 100" stroke="${a}" stroke-width="9" stroke-linecap="round" fill="none"/>`
+    : m==='plage' ? `<path d="M24 86 Q8 80 8 64 M96 88 Q110 92 110 104" stroke="${a}" stroke-width="9" stroke-linecap="round" fill="none"/>`
+    : `<path d="M24 90 Q11 94 11 106 M96 90 Q109 94 109 106" stroke="${a}" stroke-width="9" stroke-linecap="round" fill="none"/>`;
+  const scarf = m==='gel'||m==='frais'
+    ? `<path d="M25 99 Q60 113 95 99 L95 110 Q60 124 25 110 Z" fill="#c8402f"/><path d="M40 106 L40 117 M60 110 L60 121 M80 106 L80 117" stroke="#fff" stroke-width="3" fill="none"/><rect x="76" y="108" width="13" height="24" rx="4" fill="#c8402f"/><path d="M76 124 H89" stroke="#fff" stroke-width="3" fill="none"/>` : '';
+  const hat = m==='gel'
+    ? `<path d="M33 58 Q60 6 87 58 Z" fill="#c8402f"/><rect x="30" y="52" width="60" height="11" rx="5.5" fill="#fff"/><circle cx="60" cy="19" r="9" fill="#fff"/><text x="2" y="40" font-size="16" fill="#bfe3ff">❄</text><text x="102" y="62" font-size="12" fill="#bfe3ff">❄</text>` : '';
+  const shorts = m==='plage'
+    ? `<path d="M26 102 Q60 114 94 102 Q95 120 81 127 L65 127 L60 117 L55 127 L39 127 Q25 120 26 102 Z" fill="#1fa7b8"/><circle cx="40" cy="113" r="2.5" fill="#fff"/><circle cx="52" cy="119" r="2.5" fill="#fff"/><circle cx="70" cy="119" r="2.5" fill="#fff"/><circle cx="82" cy="112" r="2.5" fill="#fff"/><path d="M98 52 Q103 60 98 64 Q93 60 98 52 Z" fill="#8fd3ff"/>` : '';
+  $('mon').innerHTML = `<svg viewBox="0 0 120 140" role="img" aria-label="Petit monstre-flamme"><g class="${m==='gel'?'shiver':''}">
+    <ellipse cx="48" cy="132" rx="10" ry="6" fill="${d}"/><ellipse cx="72" cy="132" rx="10" ry="6" fill="${d}"/>
+    ${arms}
+    <g class="${burning?'burn':''}"><path d="M60 8 C70 30 98 44 98 82 C98 112 82 128 60 128 C38 128 22 112 22 82 C22 60 36 52 42 34 C48 44 50 50 54 50 C52 34 54 20 60 8 Z" fill="${a}"/>
+    <path d="M60 58 C74 68 82 80 82 96 C82 112 72 122 60 122 C48 122 38 112 38 96 C38 80 46 68 60 58 Z" fill="${b}"/></g>
+    ${hat}${eyes}${cheeks}${mouth}${shorts}${scarf}
+  </g></svg>`;
 }
 function apply(j, action){
   S = j; show('app');
@@ -386,6 +440,8 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden && pin &&
 $('nomok').onclick=()=>{ const n=$('nom').value.trim(); if(!n) return; who=n; store.set('poele-nom',n); greet(); toast('Enchanté '+n+' 👋') };
 $('nom').onkeydown=(e)=>{ if(e.key==='Enter') $('nomok').onclick() };
 $('hi').onclick=()=>{ $('nom').value=who||''; who=null; $('who').classList.remove('hidden'); $('nom').focus() };
+$('mon').onclick=()=>{ const e=$('mon'); e.classList.remove('hop'); void e.offsetWidth; e.classList.add('hop'); toast(MON[monMode].say) };
+monster(null,false);
 greet();
 if(pin) { show('app'); act({action:'status'}) } else show('login');
 renderDay();
