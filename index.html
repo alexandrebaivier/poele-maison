@@ -157,6 +157,17 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
       <div><div class="v" id="setp">--</div><div class="mut small" style="text-align:center">consigne</div></div>
       <button id="plus" aria-label="Plus chaud">+</button>
     </div>
+    <div id="chronohint" class="mut small hidden" style="margin-top:8px;position:relative"></div>
+    <div id="chronowarn" class="warn hidden" style="flex-direction:column;align-items:stretch">
+      <div><b>Le programme horaire est actif</b> : c'est lui qui choisit la température, un changement ici serait remplacé par le planning.</div>
+      <div class="small" id="chrononow"></div>
+      <div class="row" style="flex-wrap:wrap">
+        <button id="gomanual" class="small primary">Passer en manuel</button>
+        <button id="goprog" class="small">Changer le programme</button>
+        <span class="sp"></span>
+        <button id="chronook" class="small" style="background:none;color:var(--ember)">OK</button>
+      </div>
+    </div>
     <button class="power" id="power">…</button>
     <div id="clockwarn" class="warn hidden">
       <div class="sp small" id="clocktxt"></div>
@@ -198,7 +209,7 @@ select,input{font:inherit;color:var(--tx);background:var(--card2);border:1px sol
     </div>
   </div>
 
-  <h2>Températures du programme</h2>
+  <h2 id="tempsh">Températures du programme</h2>
   <div class="card">
     <div class="temps" id="temps"></div>
     <div class="row" style="margin-top:12px"><span class="mut small sp">T1 &lt; T2 &lt; T3</span><button class="primary" id="savetemps" disabled>Enregistrer</button></div>
@@ -342,6 +353,7 @@ function apply(j, action){
   $('power').textContent = i.on ? 'Éteindre le poêle' : 'Allumer le poêle';
   $('power').className = 'power' + (i.on ? '' : ' primary');
   $('sw-chrono').classList.toggle('on', i.chrono);
+  if(!i.chrono) $('chronowarn').classList.add('hidden');
   $('sw-eco').classList.toggle('on', i.eco);
   const d=i.clockDriftMin;
   if(d!=null && Math.abs(d)>=2){
@@ -355,7 +367,26 @@ function apply(j, action){
   } else if(j.chrono && j.chrono.error && !draft){
     $('week').innerHTML = '<div class="mut small">Planning indisponible : '+j.chrono.error+'</div>';
   }
-  renderWeek(); renderDay(); renderTemps();
+  renderWeek(); renderDay(); renderTemps(); renderChrono();
+}
+// Ce que le programme demande en ce moment (d'après le planning enregistré)
+function progNow(){
+  const days = S && S.chrono && S.chrono.days, t = S && S.chrono && S.chrono.temps;
+  if(!days) return '';
+  const now=new Date(), d=now.getDay(), nm=now.getHours()*60+now.getMinutes();
+  const p=(days[d]||[]).find(p=>toMin(p.start)<=nm && nm<toMin(p.end));
+  if(p) return 'En ce moment : T'+p.level+(t&&t[p.level-1]!=null?' = '+t[p.level-1]+'°':'')+' jusqu\'à '+p.end+'.';
+  for(let k=0;k<7;k++){
+    const dd=(d+k)%7, n=(days[dd]||[]).find(p=>k>0||toMin(p.start)>nm);
+    if(n) return 'Pas de chauffe prévue maintenant. Prochaine plage : '+(k===0?'aujourd\'hui':k===1?'demain':NAMES[dd])+' à '+n.start+' (T'+n.level+(t&&t[n.level-1]!=null?' = '+t[n.level-1]+'°':'')+').';
+  }
+  return 'Aucune chauffe prévue dans le planning.';
+}
+function renderChrono(){
+  const on = S && S.info.chrono;
+  $('chronohint').classList.toggle('hidden', !on);
+  if(on) $('chronohint').textContent = '📅 Programme horaire actif. '+progNow();
+  $('chrononow').textContent = on ? progNow() : '';
 }
 
 function bar(periods){
@@ -442,6 +473,7 @@ $('power').onclick=()=>{
 let spTimer=null, spVal=null;
 function bump(dv){
   if(!S||S.info.setpoint==null) return;
+  if(S.info.chrono){ renderChrono(); $('chronowarn').classList.remove('hidden'); return }
   spVal = Math.max(5,Math.min(35,(spVal ?? S.info.setpoint)+dv));
   $('setp').textContent = spVal.toFixed(1).replace('.',',')+'°';
   clearTimeout(spTimer); spTimer=setTimeout(()=>{ const v=spVal; spVal=null; act({action:'setpoint',value:v},String(v).replace('.',',')+'° — '+(v>=22?'ambiance tropicale 🌴':v<=18?'mode pull en laine 🧶':'bien cosy 🛋️')) },1200);
@@ -450,6 +482,9 @@ $('minus').onclick=()=>bump(-0.5); $('plus').onclick=()=>bump(0.5);
 $('sw-chrono').onclick=()=>act({action:'chrono',on:!S.info.chrono}, !S.info.chrono?'Programme activé':'Programme désactivé');
 $('sw-eco').onclick=()=>act({action:'eco',on:!S.info.eco}, !S.info.eco?'Mode éco activé':'Mode éco désactivé');
 $('clockfix').onclick=()=>act({action:'clock'},(j)=>Math.abs(j.info.clockDriftMin||0)<2?'Horloge du poêle réglée':'Le poêle n\'a pas pris la nouvelle heure');
+$('chronook').onclick=()=>$('chronowarn').classList.add('hidden');
+$('goprog').onclick=()=>{ $('chronowarn').classList.add('hidden'); $('tempsh').scrollIntoView({behavior:'smooth'}) };
+$('gomanual').onclick=()=>{ $('chronowarn').classList.add('hidden'); act({action:'chrono',on:false},'Mode manuel : tu peux régler la température avec − et +') };
 $('refresh').onclick=()=>act({action:'status'});
 $('logout').onclick=()=>{ store.set('poele-pin',null); pin=null; show('login') };
 
