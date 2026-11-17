@@ -283,6 +283,7 @@ function mood(i){
   else if(c>0&&c<11) m='Ça démarre, la flamme arrive.';
   else if(c>=11&&c<40) m = (s!=null&&r!=null&&r<s-0.5) ? 'Ça chauffe, encore un peu de patience.' : 'Ça crépite, on est bien.';
   else if(c>=40&&c<50) m = i.eco ? 'Il fait assez chaud : le poêle fait sa sieste et repartira tout seul.' : 'Le poêle se refroidit tranquillement.';
+  else if(i.chrono&&nextSlot()&&nextSlot().when==='aujourd\'hui') m='Le programme rallume le poêle à '+nextSlot().start+'.';
   else if(r!=null&&r<18) m='Brr, '+t+'. Une petite flambée ?';
   else if(r!=null&&r>=21) m='Il fait '+t+' sans lui, le poêle se repose.';
   else m='Tout est calme.';
@@ -340,7 +341,7 @@ function apply(j, action){
   const c=i.stateCode, raw=i.state?' · '+i.state:'';
   const [lbl,sub,cls] = i.alarm ? ['En alarme','Le poêle demande une intervention','bad']
     : c==null ? ['État inconnu','Pas de réponse du poêle','']
-    : c===0 ? ['Éteint','Le poêle est à l\'arrêt','']
+    : c===0 ? ['Éteint', i.chrono ? ((n)=>n?'Rallumage auto '+(n.when==='aujourd\'hui'?'':n.when+' ')+'à '+n.start:'Aucune chauffe au programme')(nextSlot()) : 'Le poêle est à l\'arrêt','']
     : c<11 ? ['Allumé','Démarrage en cours','on']
     : c<40 ? ['Allumé','En chauffe','on']
     : c<50 ? (i.eco ? ['Allumé','En pause éco, repart tout seul','wait'] : ['Allumé','Se refroidit','wait'])
@@ -376,11 +377,20 @@ function progNow(){
   const now=new Date(), d=now.getDay(), nm=now.getHours()*60+now.getMinutes();
   const p=(days[d]||[]).find(p=>toMin(p.start)<=nm && nm<toMin(p.end));
   if(p) return 'En ce moment : T'+p.level+(t&&t[p.level-1]!=null?' = '+t[p.level-1]+'°':'')+' jusqu\'à '+p.end+'.';
-  for(let k=0;k<7;k++){
-    const dd=(d+k)%7, n=(days[dd]||[]).find(p=>k>0||toMin(p.start)>nm);
-    if(n) return 'Pas de chauffe prévue maintenant. Prochaine plage : '+(k===0?'aujourd\'hui':k===1?'demain':NAMES[dd])+' à '+n.start+' (T'+n.level+(t&&t[n.level-1]!=null?' = '+t[n.level-1]+'°':'')+').';
-  }
+  const n=nextSlot();
+  if(n) return 'Pas de chauffe prévue maintenant. Prochaine plage : '+n.when+' à '+n.start+' (T'+n.level+(t&&t[n.level-1]!=null?' = '+t[n.level-1]+'°':'')+').';
   return 'Aucune chauffe prévue dans le planning.';
+}
+// Prochaine plage du planning qui commence après maintenant
+function nextSlot(){
+  const days = S && S.chrono && S.chrono.days;
+  if(!days) return null;
+  const now=new Date(), d=now.getDay(), nm=now.getHours()*60+now.getMinutes();
+  for(let k=0;k<8;k++){
+    const dd=(d+k)%7, n=(days[dd]||[]).find(p=>k>0||toMin(p.start)>nm);
+    if(n) return {...n, when:k===0?'aujourd\'hui':k===1?'demain':NAMES[dd].toLowerCase()+'.'};
+  }
+  return null;
 }
 function renderChrono(){
   const on = S && S.info.chrono;
